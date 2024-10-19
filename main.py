@@ -1,5 +1,6 @@
 import streamlit as st
 from Model_LLM import chain
+from Model_Photo import model
 # Создаем боковую панель для навигации
 st.sidebar.title("Navigation")
 options = st.sidebar.radio("Go to", ["Chat Bot", "AI_Photo", "AI_Video"])
@@ -36,11 +37,17 @@ if options == "Chat Bot":
 
 
 elif options == "AI_Photo":
-    st.title("AI_Photo_Temp")
-    st.write("""
-        This is a simple Streamlit app that showcases how to build a chat bot and use 
-        a sidebar for navigation. Streamlit is great for building quick prototypes and data apps!
-    """)
+    st.title("Генерация изображений с помощью Hugging Face Stable Diffusion")
+    prompt = st.text_input("Введите текстовое описание:")
+    if st.button("Сгенерировать изображение"):
+        if prompt:
+            with st.spinner("Генерация изображения..."):
+                # Генерируем изображение
+                image = model(prompt,num_inference_steps=350).images[0]
+
+            st.image(image, caption="Сгенерированное изображение", use_column_width=True)
+        else:
+            st.error("Пожалуйста, введите текстовое описание.")
 
 elif options == "AI_Video":
     st.title("AI_Video_Temp")
