@@ -23,3 +23,4 @@ video = pipe(
 ).frames[0]
 
 export_to_video(video, "output.mp4", fps=8)
+

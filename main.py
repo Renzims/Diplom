@@ -1,6 +1,10 @@
 import streamlit as st
 from Model_LLM import chain
-from Model_Photo import model
+#from Model_Photo import model
+from Model_Photo import pipe
+import sys
+import random
+import torch
 # Создаем боковую панель для навигации
 st.sidebar.title("Navigation")
 options = st.sidebar.radio("Go to", ["Chat Bot", "AI_Photo", "AI_Video"])
@@ -42,9 +46,18 @@ elif options == "AI_Photo":
     if st.button("Сгенерировать изображение"):
         if prompt:
             with st.spinner("Генерация изображения..."):
-                # Генерируем изображение
-                image = model(prompt,num_inference_steps=350).images[0]
+                seed = random.randint(0, sys.maxsize)
+                num_inference_steps = 150
 
+                pipeline_params = {
+                    "prompt": prompt,
+                    "output_type": "pil",
+                    "generator": torch.Generator("cuda").manual_seed(seed),
+                    "num_inference_steps": num_inference_steps,
+                }
+                images = pipe(**pipeline_params).images
+                #image = model(prompt,num_inference_steps=150).images[0]
+                image = images[0]
             st.image(image, caption="Сгенерированное изображение", use_column_width=True)
         else:
             st.error("Пожалуйста, введите текстовое описание.")
