@@ -1,7 +1,7 @@
 import streamlit as st
 from Model_LLM import chain
 #from Model_Photo import model
-from Model_Photo import pipe
+from Model_Photo import model
 import sys
 import random
 import torch
@@ -46,6 +46,7 @@ elif options == "AI_Photo":
     if st.button("Сгенерировать изображение"):
         if prompt:
             with st.spinner("Генерация изображения..."):
+                '''
                 seed = random.randint(0, sys.maxsize)
                 num_inference_steps = 150
 
@@ -55,9 +56,10 @@ elif options == "AI_Photo":
                     "generator": torch.Generator("cuda").manual_seed(seed),
                     "num_inference_steps": num_inference_steps,
                 }
-                images = pipe(**pipeline_params).images
-                #image = model(prompt,num_inference_steps=150).images[0]
-                image = images[0]
+                '''
+                #images = pipe(**pipeline_params).images
+                image = model(prompt,num_inference_steps=150).images[0]
+                #image = images[0]
             st.image(image, caption="Сгенерированное изображение", use_column_width=True)
         else:
             st.error("Пожалуйста, введите текстовое описание.")

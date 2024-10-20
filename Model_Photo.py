@@ -4,14 +4,15 @@ from transformers import BitsAndBytesConfig
 import sys
 import random
 cache_dir = "D:/Diplom/New folder/models"
-'''
+
 # Проверяем, доступна ли GPU
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda:1" if torch.cuda.is_available() else "cpu"
 
 # Конфигурация для использования 8-битных весов
 bnb_config = BitsAndBytesConfig(
     load_in_8bit=True,
 )
+#'''
 # Загружаем модель с использованием 8-битных весов
 def load_model(model_id):
     model = StableDiffusionPipeline.from_pretrained(
@@ -37,3 +38,4 @@ device = "cuda:1"
 
 pipe = DiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", **common_params)
 pipe = pipe.to(device)
+'''
