@@ -1,5 +1,5 @@
 import streamlit as st
-from Model_LLM import chain
+from Model_LLM import ask_question
 #from Model_Photo import model
 from Model_Photo import model
 import sys
@@ -31,9 +31,8 @@ if options == "Chat Bot":
     if st.session_state.messages[-1]["role"] == "user":
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = chain.invoke({"question": prompt})  # Запуск цепочки с моделью Hugging Face
+                response = ask_question(prompt)  # Запуск цепочки с моделью Hugging Face
                 full_response = "".join(response) if isinstance(response, list) else response
-
                 # Отображение ответа
                 st.markdown(full_response)
         message = {"role": "assistant", "content": full_response}

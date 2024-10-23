@@ -1,10 +1,12 @@
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from transformers import AutoModelForCausalLM, AutoTokenizer,pipeline, BitsAndBytesConfig
 from transformers.generation.stopping_criteria import StoppingCriteria, StoppingCriteriaList
 import torch
 from langchain_huggingface.llms import HuggingFacePipeline
 import os
 from huggingface_hub import login
+from langchain_core.output_parsers import BaseOutputParser
+import gc
 
 os.environ["HF_HOME"] = "D:/Diplom/New folder/models"
 cache_dir = "D:/Diplom/New folder/models"
@@ -50,7 +52,6 @@ pipe = pipeline(
     top_k=50,
     top_p=0.95,
 )
-'''
 pipe = pipeline(
     "text-generation",
     model=model,
@@ -75,3 +76,85 @@ prompt_template = ChatPromptTemplate.from_messages(
 
 # Создаём цепочку
 chain = prompt_template | llm
+'''
+pipe = pipeline(
+    "text-generation",
+    model=model,
+    tokenizer=tokenizer,
+    max_new_tokens=650,
+    temperature=0.7,
+    top_k=50,
+    top_p=0.95,
+)
+
+# Интеграция с LangChain
+llm = HuggingFacePipeline(pipeline=pipe)
+template = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+You are a helpful assistant who provides clear and concise answers to the user's questions.
+You will be provided with a chat history with user:
+{history}
+
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+{query}
+
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+"""
+class OutputParser(BaseOutputParser[str]):
+    def parse(self, response: str) -> str:
+        """
+        Извлекает финальный ответ из строки, предполагая, что ответ начинается с "assistant<|end_header_id|>"
+        """
+        answer_start = response.rfind("assistant<|end_header_id|>")
+        if answer_start != -1:
+          return response[answer_start + len("assistant<|end_header_id|>"):]
+        return response
+
+    @property
+    def _type(self) -> str:
+        return "str_output_parser"
+prompt_template = PromptTemplate(input_variables=["history", "query"], template=template)
+
+
+class ChatHistory:
+    def __init__(self, max_records=5):
+        self.messages = []  # Список для хранения сообщений
+        self.max_records = max_records  # Максимальное количество записей
+
+    def add_message(self, role: str, content: str):
+        """Добавляет сообщение и поддерживает максимальное количество записей"""
+        # Добавляем новое сообщение в конец списка
+        self.messages.append((role, content))
+
+        # Если длина списка превышает допустимое количество записей, удаляем старые
+        if len(self.messages) > self.max_records * 2:  # Умножаем на 2, т.к. пара "User -> Assistant"
+            self.messages = self.messages[-self.max_records * 2:]
+
+    def get_history(self) -> str:
+        """Возвращает историю сообщений в формате строк"""
+        return "\n".join([f"{role}: {content}" for role, content in self.messages])
+
+
+# Инициализация истории
+chat_history = ChatHistory()
+# Создание LLMChain
+chain = prompt_template | llm | OutputParser()
+
+# Функция для извлечения финального ответа
+
+# Функция для взаимодействия с моделью
+def ask_question(question):
+    # Получаем текущую историю
+    history = chat_history.get_history()
+
+    # Получаем ответ от модели
+    response = chain.invoke({'history': history, 'query': question})
+    # Извлекаем только финальный ответ
+    #final_answer = extract_final_answer(response)
+
+    # Добавляем вопрос и ответ в историю
+    chat_history.add_message("User", question)
+    chat_history.add_message("Assistant", response)
+    gc.collect()
+    torch.cuda.empty_cache()
+    return response
