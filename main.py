@@ -1,10 +1,11 @@
 import streamlit as st
-from Model_LLM import ask_question
+from Model_LLM import model as llm_model
 #from Model_Photo import model
 from Model_Photo import model
 import sys
 import random
 import torch
+from PIL import Image
 # Создаем боковую панель для навигации
 st.sidebar.title("Navigation")
 options = st.sidebar.radio("Go to", ["Chat Bot", "AI_Photo", "AI_Video"])
@@ -19,24 +20,40 @@ if options == "Chat Bot":
 
     # Отображение истории сообщений
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        if message["role"] == "user" and "image" in message:
+            # Отображение загруженного изображения
+            with st.chat_message(message["role"]):
+                st.image(message["image"], caption="User uploaded an image.")
+        else:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+    prompt = st.text_input("Enter your question:")
+    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
-    # Реакция на ввод пользователя
-    if prompt := st.chat_input():
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.write(prompt)
+    # Обработка ввода пользователя
+    if st.button("Submit"):
+        if prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
 
-    if st.session_state.messages[-1]["role"] == "user":
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = ask_question(prompt)  # Запуск цепочки с моделью Hugging Face
-                full_response = "".join(response) if isinstance(response, list) else response
-                # Отображение ответа
-                st.markdown(full_response)
-        message = {"role": "assistant", "content": full_response}
-        st.session_state.messages.append(message)
+            # Проверка наличия изображения
+            if uploaded_image is not None:
+                image = Image.open(uploaded_image)
+                st.session_state.messages.append({"role": "user", "image": image})
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        # Отправка запроса с изображением
+                        response = llm_model._call(prompt,image)
+                        st.markdown(response)
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+
+            else:
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        # Отправка запроса без изображения
+                        response = llm_model._call(prompt)
+                        st.markdown(response)
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+
 
 
 elif options == "AI_Photo":
