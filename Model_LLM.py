@@ -9,6 +9,7 @@ import gc
 from typing import Optional, List, Union
 #from langchain.llms.base import BaseLLM
 from PIL import Image
+from pymongo import MongoClient
 
 os.environ["HF_HOME"] = "D:/Diplom/New folder/models"
 cache_dir = "D:/Diplom/New folder/models"
@@ -126,6 +127,8 @@ class ChatHistory:
     def get_history(self) -> str:
         """Возвращает историю сообщений в формате строк"""
         return "\n".join([f"{role}: {content}" for role, content in self.messages])
+    def clear(self):
+        self.messages=[]
 class OutputParser(BaseOutputParser[str]):
     def parse(self, response: str) -> str:
         answer_start = response.rfind("\nassistant\n")
@@ -144,11 +147,23 @@ bnb_config= BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.float16
 )
 class CustomLLM:
-  def __init__(self, model_name, device = 'auto', bnb_config=bnb_config,chat_history = ChatHistory(), parser=OutputParser()):
+  def __init__(self, model_name, device = 'auto',
+               bnb_config=bnb_config,
+               chat_history = ChatHistory(),
+               parser=OutputParser(),
+               db_uri="mongodb://localhost:27017/",
+               db_name="chatbot_database",
+               collection_name="chat_history"):
     self.processor = AutoProcessor.from_pretrained(model_name, device_map=device, trust_remote_code=True,cache_dir=cache_dir)
     self.model = AutoModelForPreTraining.from_pretrained(model_name, device_map=device, trust_remote_code=True,quantization_config=bnb_config,cache_dir=cache_dir)
     self.chat_history = chat_history
     self.parser=parser
+    self.generation_params = {
+    'max_new_tokens': 650,
+    'temperature': 0.7,
+    'top_k': 50,
+    'top_p': 0.95
+}
     self.template_text = PromptTemplate(
             input_variables=["history", "query"],
             template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
@@ -175,16 +190,38 @@ You will be provided with a chat history with user:
 {query}
 <|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
         )
+    self.db_uri = db_uri
+    self.db_name = db_name
+    self.collection_name = collection_name
   def custom_response_function(self, question: str, image: Optional[Image.Image] = None) -> str:
     if image:
       inputs = self.processor(images=image, text=question, return_tensors="pt", padding=True)
     else:
       inputs = self.processor(text=question, return_tensors="pt", padding=True)
     inputs = inputs.to(self.model.device)
-    outputs = self.model.generate(**inputs,max_new_tokens=400)
+    outputs = self.model.generate(**inputs,**self.generation_params)
     response_text = self.processor.decode(outputs[0],skip_special_tokens=True)
     return response_text
+
+  def fetch_chat_history_from_mongo(self, max_records=5):
+      """Получает последние 5 пар запросов и ответов из MongoDB."""
+      client = MongoClient(self.db_uri)
+      db = client[self.db_name]
+      collection = db[self.collection_name]
+
+      user_messages = reversed(list(collection.find({"role": "user"}).sort("timestamp", -1).limit(max_records)))
+      assistant_messages = reversed(list(collection.find({"role": "assistant"}).sort("timestamp", -1).limit(max_records)))
+
+      # Добавляем пары "User -> Assistant" в ChatHistory
+      self.chat_history.messages.clear()  # Очищаем старую историю перед добавлением новых
+      for user_msg, assistant_msg in zip(user_messages, assistant_messages):
+          self.chat_history.add_message(user_msg['role'], user_msg['content'])
+          self.chat_history.add_message(assistant_msg['role'], assistant_msg['content'])
+
   def _call(self, prompt: str, image: Optional[Image.Image] = None, stop: Optional[List[str]] = None) -> str:
+
+    self.fetch_chat_history_from_mongo()
+
     selected_template = self.template_image if image else self.template_text
     formatted_prompt = selected_template.format(history=self.chat_history.get_history(), query=prompt)
     response=self.custom_response_function(formatted_prompt, image=image)
