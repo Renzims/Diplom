@@ -51,6 +51,10 @@ if options == "Chat Bot":
         # Загружаем историю из базы данных при запуске
         st.session_state.messages = (load_chat_history() or
                                      [{"role": "assistant", "content": "How may I assist you today?"}])
+    if "prompt" not in st.session_state:
+        st.session_state.prompt = ""
+    if "uploaded_image" not in st.session_state:
+        st.session_state.uploaded_image = None
 
     # Отображение истории сообщений
     for message in st.session_state.messages:
@@ -60,7 +64,7 @@ if options == "Chat Bot":
                 st.image(message["image"], caption="User uploaded an image.")
             elif message["role"] == "assistant" and "image" in message:
                 st.markdown(message["content"] if message["content"] else "assistant generate an image")
-                st.image(message["image"], caption="User uploaded an image.")
+                st.image(message["image"], caption="assistant generate an image")
             else:
                 # Отображаем только текст
                 st.markdown(message["content"])
@@ -106,28 +110,6 @@ if options == "Chat Bot":
                             st.session_state.messages.append({"role": "assistant", "content": response})
                             save_message("user", content=prompt)
                             save_message("assistant", content=response)
-
-
-elif options == "AI_Photo":
-    st.title("Генерация изображений с помощью Hugging Face Stable Diffusion")
-    prompt = st.text_input("Введите текстовое описание:")
-    if st.button("Сгенерировать изображение"):
-        if prompt:
-            with st.spinner("Генерация изображения..."):
-                '''
-                seed = random.randint(0, sys.maxsize)
-                num_inference_steps = 150
-
-                pipeline_params = {
-                    "prompt": prompt,
-                    "output_type": "pil",
-                    "generator": torch.Generator("cuda").manual_seed(seed),
-                    "num_inference_steps": num_inference_steps,
-                }
-                '''
-                #images = pipe(**pipeline_params).images
-                image = photo_model(prompt,num_inference_steps=150).images[0]
-                #image = images[0]
-            st.image(image, caption="Сгенерированное изображение", use_column_width=True)
-        else:
-            st.error("Пожалуйста, введите текстовое описание.")
+        st.session_state.prompt = ""
+        st.session_state.uploaded_image = None
+        st.rerun()
