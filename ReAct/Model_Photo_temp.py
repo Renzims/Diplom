@@ -1,12 +1,12 @@
 import torch
-from diffusers import StableDiffusionPipeline,DiffusionPipeline
+from diffusers import StableDiffusionPipeline
 from transformers import BitsAndBytesConfig
 import sys
 import random
 cache_dir = "D:/Diplom/New folder/models"
 
 # Проверяем, доступна ли GPU
-device = "cuda:1" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Конфигурация для использования 8-битных весов
 bnb_config = BitsAndBytesConfig(
@@ -17,9 +17,8 @@ bnb_config = BitsAndBytesConfig(
 def load_model(model_id):
     model = StableDiffusionPipeline.from_pretrained(
         model_id,
-        revision="fp16",  # Используем FP16 для снижения потребления памяти
         torch_dtype=torch.float16,
-        bitsandbytes_config=bnb_config,
+        #bitsandbytes_config=bnb_config,
         cache_dir= cache_dir,
     )
     model.to(device)

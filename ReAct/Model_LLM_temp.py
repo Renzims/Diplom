@@ -19,7 +19,7 @@ bnb_config= BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.float16
 )
 
-class CustomLLM(LLM):  # ✅ Теперь это полноценный LangChain LLM
+class CustomLLM(LLM):
     model_name: str = Field(default="meta-llama/Llama-3.2-11B-Vision-Instruct")
     temperature: float = Field(default=0.7)
     max_tokens: int = Field(default=650)

@@ -1,15 +1,13 @@
 import streamlit as st
-from agent_router_temp import agent_route
+from graph import execute
 from pymongo import MongoClient
-from datetime import datetime
 from PIL import Image
 import base64
 from io import BytesIO
-# После того как все будет работать упростить этот файл
-# Подключение к MongoDB
 client = MongoClient("mongodb://localhost:27017/")
 db = client["chatbot_database"]
 collection = db["chat_history"]
+from history import save_message
 
 
 # Функция загрузки истории чата
@@ -40,21 +38,26 @@ if options == "Chat Bot":
         with st.chat_message(message["role"]):
             if "image" in message:
                 st.image(message["image"])
-            st.markdown(message["content"])
+            if "content" in message:
+                st.markdown(message["content"])
 
     prompt = st.text_input("Enter your question:")
-    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+    #uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
     if st.button("Submit"):
         if prompt:
-            if uploaded_image:
-                image = Image.open(uploaded_image)
-                response = agent_route(prompt, image)
-                st.session_state.messages.append({"role": "user", "content": prompt, "image": image})
-                st.session_state.messages.append({"role": "assistant", "content": response})
-            else:
-                response = agent_route(prompt)
+            res = execute(prompt)
+            if type(res)==tuple:
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                for img in res[1]:
+                    st.session_state.messages.append({"role": "assistant", "image":img})
+                st.session_state.messages.append({"role": "assistant", "content": res[0]})
+                save_message("user", content=prompt)
+                save_message("assistant", content=res[0], image=res[1][0])
+            else:
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                st.session_state.messages.append({"role": "assistant", "content": res[0]})
+                save_message("user", content=prompt)
+                save_message("assistant", content=res[0])
 
         st.rerun()
