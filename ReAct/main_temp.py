@@ -42,7 +42,7 @@ if options == "Chat Bot":
                 st.markdown(message["content"])
 
     prompt = st.text_input("Enter your question:")
-    #uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
     if st.button("Submit"):
         if prompt:

@@ -6,7 +6,7 @@ import random
 cache_dir = "D:/Diplom/New folder/models"
 
 # Проверяем, доступна ли GPU
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 # Конфигурация для использования 8-битных весов
 bnb_config = BitsAndBytesConfig(

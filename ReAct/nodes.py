@@ -3,7 +3,7 @@ from ReAct import ReAct_agent, tools
 from langgraph.prebuilt.tool_executor import ToolExecutor
 
 def run_agent_reasoning(state:AgentState):
-    agent_outcome=ReAct_agent.invoke(state)
+    agent_outcome=ReAct_agent.invoke(state,verbose=True)
     return {"agent_outcome":agent_outcome}
 
 tool_executor=ToolExecutor(tools)

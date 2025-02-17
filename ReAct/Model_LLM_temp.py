@@ -2,11 +2,35 @@ from huggingface_hub import login
 import gc
 import torch
 from typing import Optional, List, Dict, Any
-from langchain.llms.base import LLM  # ✅ Наследуем LangChain LLM
+from langchain.llms.base import LLM
 from transformers import BitsAndBytesConfig, AutoProcessor, AutoModelForPreTraining
 from PIL import Image
-import os
 from pydantic import Field, PrivateAttr
+from langchain.prompts import PromptTemplate
+import os
+import shutil
+import time
+import uuid
+
+SAVE_FOLDER = "D:\Diplom\pycharm\\try_2\ReAct\\temp_photo"
+
+def generate_filename():
+    timestamp = int(time.time())
+    unique_id = uuid.uuid4().hex[:8]
+    return f"image_{timestamp}_{unique_id}.png"
+
+def save_image(image: Image.Image):
+    if not os.path.exists(SAVE_FOLDER):
+        os.makedirs(SAVE_FOLDER)
+    filename = generate_filename()
+    file_path = os.path.join(SAVE_FOLDER, filename)
+    image.save(file_path)
+    return file_path
+
+def clear_images():
+    if os.path.exists(SAVE_FOLDER):
+        shutil.rmtree(SAVE_FOLDER)
+
 
 os.environ["HF_HOME"] = "D:/Diplom/New folder/models"
 cache_dir = "D:/Diplom/New folder/models"
@@ -19,6 +43,20 @@ bnb_config= BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.float16
 )
 
+template=PromptTemplate(
+            input_variables=["query"],
+            template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+You are a useful assistant who should analyze images based on the user's request.
+<|eot_id|><|start_header_id|>user<|end_header_id|>
+User request:
+{query}
+
+User images
+<|image|>
+
+<|eot_id|><|start_header_id|>assistant_answer_final<|end_header_id|>"""
+        )
+
 class CustomLLM(LLM):
     model_name: str = Field(default="meta-llama/Llama-3.2-11B-Vision-Instruct")
     temperature: float = Field(default=0.7)
@@ -29,7 +67,7 @@ class CustomLLM(LLM):
     _processor: Any = PrivateAttr()
     _model: Any = PrivateAttr()
 
-    def __init__(self, model_name: str = "meta-llama/Llama-3.2-11B-Vision-Instruct", device: str = "cuda", **kwargs):
+    def __init__(self, model_name: str = "meta-llama/Llama-3.2-11B-Vision-Instruct", device: str = "cuda:1", **kwargs):
         """Конструктор, совместимый с LangChain"""
         super().__init__(**kwargs)  # ✅ Передаем параметры в родительский LLM
         self._processor = AutoProcessor.from_pretrained(model_name, device_map=device, trust_remote_code=True, cache_dir=cache_dir)
@@ -48,10 +86,18 @@ class CustomLLM(LLM):
             top_p=self.top_p
         )
         response_text = self._processor.decode(outputs[0], skip_special_tokens=True)
-
+        final_output=self.parse_assistant_response(response_text)
         gc.collect()
         torch.cuda.empty_cache()
-        return response_text
+        return final_output
+    def parse_assistant_response(self,full_response: str) -> str:
+        keyword = "assistant_answer_final"
+        keyword_index = full_response.find(keyword)
+        if keyword_index != -1:
+            assistant_text = full_response[keyword_index + len(keyword):].strip()
+            return assistant_text
+        else:
+            return full_response
 
     @property
     def _identifying_params(self) -> Dict[str, Any]:
@@ -64,5 +110,4 @@ class CustomLLM(LLM):
         """Обязательный метод для LangChain LLM"""
         return "custom_llm"
 
-# ✅ Теперь `CustomLLM` полностью совместим с LangChain
 model = CustomLLM()
