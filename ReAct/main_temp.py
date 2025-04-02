@@ -9,7 +9,6 @@ db = client["chatbot_database"]
 collection = db["chat_history"]
 from history import save_message
 
-
 # Функция загрузки истории чата
 def load_chat_history():
     messages = []
@@ -46,18 +45,20 @@ if options == "Chat Bot":
 
     if st.button("Submit"):
         if prompt:
-            res = execute(prompt)
+            if uploaded_image:
+                uploaded_image=Image.open(uploaded_image)
+            res = execute(prompt,uploaded_image)
+            print(res)
+            st.session_state.messages.append({"role": "user", "content": prompt,"image":uploaded_image}) if uploaded_image else st.session_state.messages.append({"role": "user", "content": prompt})
             if type(res)==tuple:
-                st.session_state.messages.append({"role": "user", "content": prompt})
                 for img in res[1]:
                     st.session_state.messages.append({"role": "assistant", "image":img})
                 st.session_state.messages.append({"role": "assistant", "content": res[0]})
                 save_message("user", content=prompt)
                 save_message("assistant", content=res[0], image=res[1][0])
             else:
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                st.session_state.messages.append({"role": "assistant", "content": res[0]})
+                st.session_state.messages.append({"role": "assistant", "content": res})
                 save_message("user", content=prompt)
-                save_message("assistant", content=res[0])
+                save_message("assistant", content=res)
 
         st.rerun()

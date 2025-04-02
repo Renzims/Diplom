@@ -3,7 +3,6 @@ from typing_extensions import TypedDict
 import operator
 from langchain_core.messages import BaseMessage
 from langchain_core.agents import AgentAction, AgentFinish
-from PIL.PngImagePlugin import PngImageFile
 
 class AgentState(TypedDict):
     input: str
