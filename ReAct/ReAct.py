@@ -43,7 +43,6 @@ def history(prompt:str):
     You should use it to get more context in the conversation with the user or the user can refer to their previous messages.
     If the user's request is for images, use only the descriptions provided in the story.
     """
-    print("USE HIST")
     documents = collection.find(
         {"role": {"$in": ["user", "assistant"]}, "content": {"$exists": True}}
     ).sort("_id", -1).limit(6)

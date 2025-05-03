@@ -8,8 +8,6 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["chatbot_database"]
 collection = db["chat_history"]
 from history import save_message
-
-# Функция загрузки истории чата
 def load_chat_history():
     messages = []
     for doc in collection.find():
@@ -20,9 +18,6 @@ def load_chat_history():
             message["image"] = image
         messages.append(message)
     return messages
-
-
-# Streamlit UI
 st.sidebar.title("Navigation")
 options = st.sidebar.radio("Go to", ["Chat Bot", "AI_Photo"])
 

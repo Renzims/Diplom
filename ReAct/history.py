@@ -7,7 +7,6 @@ db = client["chatbot_database"]
 collection = db["chat_history"]
 
 def save_message(role, content=None, image=None):
-    """Сохраняет сообщения в MongoDB"""
     message = {"role": role, "content": content, "timestamp": datetime.utcnow()}
     if image:
         buffered = BytesIO()
@@ -18,7 +17,6 @@ def save_message(role, content=None, image=None):
 
 
 def fetch_chat_history(max_records=10):
-    """Извлекает последние 10 пар сообщений из MongoDB"""
     messages = list(collection.find().sort("timestamp", -1).limit(max_records * 2))
     messages.reverse()
     history = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages if 'content' in msg])
